@@ -1,7 +1,8 @@
 import unittest
 import bubblesort
-from unittest.mock import patch
+from unittest.mock import patch, mock_open, MagicMock
 import random
+import json
 
 class TestBubbleSort(unittest.TestCase):
 
@@ -49,6 +50,35 @@ class TestBubbleSort(unittest.TestCase):
     def test_generate_random_list_called_once(self, mock_generate_random_list):
         bubblesort.bubble_sort(bubblesort.generate_random_list(5))  
         mock_generate_random_list.assert_called_once()
+
+    # Тест сохранения в файл с моком файловой системы
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('json.dump')
+    def test_save_sorted_result(self, mock_json_dump, mock_file):
+        test_data = [3, 1, 4, 2]
+        expected_sorted = [1, 2, 3, 4]
+        
+        result = bubblesort.save_sorted_result(test_data, 'dummy.json')
+        
+        self.assertTrue(result)
+        mock_file.assert_called_once_with('dummy.json', 'w')
+        mock_json_dump.assert_called_once_with(expected_sorted, mock_file())
+
+    # Тест, что функция save_sorted_result вызывает bubble_sort
+    @patch('bubblesort.bubble_sort')
+    def test_save_sorted_calls_bubble_sort(self, mock_bubble_sort):
+        mock_bubble_sort.return_value = [1, 2, 3]
+        
+        test_data = [3, 2, 1]
+        bubblesort.save_sorted_result(test_data, 'dummy.json')
+        
+        mock_bubble_sort.assert_called_once_with(test_data.copy())
+
+    # Тест обработки ошибки при записи файла
+    @patch('builtins.open', side_effect=IOError('Disk error'))
+    def test_save_sorted_result_ioerror(self, mock_file):
+        with self.assertRaises(IOError):
+            bubblesort.save_sorted_result([1, 2, 3], 'dummy.json')
 
 if __name__ == '__main__':
     unittest.main()
